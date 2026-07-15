@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multi-mode route map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-heading-row">
+      <h1 id="pageTitle">Route map</h1>
+      <button id="langToggleBtn" class="icon-btn">🌐 தமிழ்</button>
+    </div>
+    <div class="controls">
+      <div class="field autocomplete-wrap">
+        <label id="startLabel">Start</label>
+        <div class="input-with-action">
+          <input id="startInput" type="text" placeholder="Type a place name..." />
+          <button class="icon-btn" id="startStreetViewBtn" title="Street View">📸</button>
+        </div>
+        <div id="startSuggestions" class="suggestions"></div>
+        <div id="startRecent" class="recent-chips"></div>
+        <div id="startWeather" class="weather-badge"></div>
+      </div>
+
+      <button id="swapBtn" class="icon-btn swap-btn" title="Swap start and end">🔄</button>
+
+      <div id="stopsContainer"></div>
+
+      <div class="field autocomplete-wrap">
+        <label id="endLabel">End</label>
+        <div class="input-with-action">
+          <input id="endInput" type="text" placeholder="Type a place name..." />
+          <button class="icon-btn" id="endStreetViewBtn" title="Street View">📸</button>
+        </div>
+        <div id="endSuggestions" class="suggestions"></div>
+        <div id="endRecent" class="recent-chips"></div>
+        <div id="endWeather" class="weather-badge"></div>
+      </div>
+
+      <button id="addStopBtn">+ Add stop</button>
+
+      <div class="field">
+        <label>Mode</label>
+        <select id="modeSelect">
+          <option value="walking">Walking</option>
+          <option value="car">Car</option>
+          <option value="bus">Bus</option>
+          <option value="train">Train</option>
+          <option value="ship">Ship</option>
+          <option value="flight">Flight</option>
+        </select>
+      </div>
+
+      <label class="round-trip-label">
+        <input type="checkbox" id="roundTripCheckbox" /> <span id="roundTripLabelText">🔁 Round trip</span>
+      </label>
+
+      <button id="findRouteBtn">Find route</button>
+      <button id="resetBtn">Reset</button>
+      <button id="satelliteBtn">Satellite view</button>
+      <button id="directionsBtn" style="display:none">Directions</button>
+    </div>
+
+    <div class="poi-toggles">
+      <label><input type="checkbox" id="poiHotel" /> <span id="poiHotelLabel">🏨 Hotels</span></label>
+      <label><input type="checkbox" id="poiRestaurant" /> <span id="poiRestaurantLabel">🍽️ Restaurants</span></label>
+      <label><input type="checkbox" id="poiBusStop" /> <span id="poiBusStopLabel">🚌 Bus stops</span></label>
+      <label><input type="checkbox" id="poiStation" /> <span id="poiStationLabel">🚉 Railway stations</span></label>
+    </div>
+
+    <div id="info" class="info"></div>
+  </div>
+
+  <div id="directionsPanel" class="directions-panel" style="display:none"></div>
+
+  <div id="map"></div>
+
+  <div class="trip-tools-section">
+    <button id="toggleTripToolsBtn">🧭 Trip planning tools</button>
+    <div id="tripToolsPanel" class="trip-tools-panel" style="display:none">
+
+      <div class="tool-block">
+        <h3>🕐 Best time to leave</h3>
+        <div class="tool-row">
+          <input type="time" id="departureTime" />
+          <button id="checkTrafficBtn">Check</button>
+        </div>
+        <div id="trafficResult" class="tool-result"></div>
+      </div>
+
+      <div class="tool-block">
+        <h3>📅 Multi-day trip planner</h3>
+        <p class="tool-hint">Works with your Start + Stops + End. Set how many days to split the trip across.</p>
+        <div class="tool-row">
+          <input type="number" id="numDaysInput" min="1" max="15" value="2" />
+          <button id="planDaysBtn">Plan days</button>
+        </div>
+        <div id="daysResult" class="tool-result"></div>
+      </div>
+
+      <div class="tool-block">
+        <h3>⛽ Fuel cost estimate (Car)</h3>
+        <div class="tool-row">
+          <input type="number" id="mileageInput" placeholder="Mileage (km/l)" min="1" />
+          <input type="number" id="fuelPriceInput" placeholder="Fuel price (₹/l)" min="1" />
+          <button id="calcFuelBtn">Calculate</button>
+        </div>
+        <div id="fuelResult" class="tool-result"></div>
+      </div>
+
+      <div class="tool-block">
+        <h3>🎫 Bus / Train fare estimate</h3>
+        <div class="tool-row">
+          <input type="number" id="fareRateInput" placeholder="Rate (₹/km)" min="0.1" step="0.1" />
+          <button id="calcFareBtn">Calculate</button>
+        </div>
+        <div id="fareResult" class="tool-result"></div>
+        <p class="tool-hint">Rough distance-based estimate only, not an official fare.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="save-share-section">
+    <button id="toggleSaveShareBtn">💾 Save &amp; Share</button>
+    <div id="saveSharePanel" class="trip-tools-panel" style="display:none">
+
+      <div class="tool-block">
+        <h3>💾 Favorite routes</h3>
+        <div class="tool-row">
+          <input type="text" id="favNameInput" placeholder="Name this route..." />
+          <button id="saveFavBtn">Save</button>
+        </div>
+        <div id="favList" class="fav-list"></div>
+      </div>
+
+      <div class="tool-block">
+        <h3>📤 Share this route</h3>
+        <div class="tool-row">
+          <button id="copyLinkBtn">Copy link</button>
+          <button id="whatsappShareBtn">Share on WhatsApp</button>
+        </div>
+        <div id="shareResult" class="tool-result"></div>
+        <p class="tool-hint">Note: the link only opens correctly on this same computer (127.0.0.1 is a local address).</p>
+      </div>
+
+      <div class="tool-block">
+        <h3>📄 Trip summary PDF</h3>
+        <div class="tool-row">
+          <button id="downloadPdfBtn">Download PDF</button>
+        </div>
+        <div id="pdfResult" class="tool-result"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="matrix-section">
+    <button id="toggleMatrixBtn">📏 Compare distances between multiple cities</button>
+    <div id="matrixPanel" class="matrix-panel" style="display:none">
+      <div id="matrixCities"></div>
+      <button id="addCityBtn">+ Add city</button>
+      <button id="compareCitiesBtn">Compare</button>
+      <div id="matrixResult"></div>
+    </div>
+  </div>
+
+  <div class="extra-section">
+    <button id="toggleExtraBtn">✨ More: notes, ratings, carbon footprint, history, collaborate</button>
+    <div id="extraPanel" class="trip-tools-panel" style="display:none">
+
+      <div class="tool-block">
+        <h3>📝 Route notes</h3>
+        <p class="tool-hint">Personal notes for Start / Stops / End (saved on this browser only).</p>
+        <div id="notesContainer"></div>
+      </div>
+
+      <div class="tool-block">
+        <h3>⭐ Rate this route</h3>
+        <div id="starRating" class="star-rating">
+          <span data-star="1">☆</span><span data-star="2">☆</span><span data-star="3">☆</span><span data-star="4">☆</span><span data-star="5">☆</span>
+        </div>
+        <div class="tool-row">
+          <select id="trafficSelect">
+            <option value="">Traffic...</option>
+            <option value="Light">Light traffic</option>
+            <option value="Moderate">Moderate traffic</option>
+            <option value="Heavy">Heavy traffic</option>
+          </select>
+          <select id="roadConditionSelect">
+            <option value="">Road condition...</option>
+            <option value="Good">Good</option>
+            <option value="Average">Average</option>
+            <option value="Poor">Poor / potholes</option>
+          </select>
+        </div>
+        <input type="text" id="ratingComment" placeholder="Optional comment..." style="margin-top:8px;width:100%;padding:8px;border-radius:8px;border:1px solid #374151;background:#1f2937;color:#fff;" />
+        <button id="submitRatingBtn" style="margin-top:8px">Submit rating</button>
+        <div id="ratingResult" class="tool-result"></div>
+      </div>
+
+      <div class="tool-block">
+        <h3>🌍 Carbon footprint comparison</h3>
+        <p class="tool-hint">Find a route first - this compares CO2 for the same distance across all modes.</p>
+        <button id="calcCarbonBtn">Compare CO2 emissions</button>
+        <div id="carbonResult" class="tool-result"></div>
+      </div>
+
+      <div class="tool-block">
+        <h3>📊 Trip history dashboard</h3>
+        <button id="loadHistoryBtn">Show my stats</button>
+        <button id="clearHistoryBtn">Clear history</button>
+        <div id="historyResult" class="tool-result"></div>
+      </div>
+
+      <div class="tool-block">
+        <h3>👥 Collaborate in real time</h3>
+        <p class="tool-hint">Share a room code with a friend - when either of you finds a route, both maps update live.</p>
+        <div class="tool-row">
+          <input type="text" id="roomCodeInput" placeholder="Room code (e.g. trip123)" />
+          <button id="joinRoomBtn">Join room</button>
+        </div>
+        <div id="roomStatus" class="tool-result"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
