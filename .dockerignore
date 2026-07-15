@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.env
+favorites.json
+history.json
+ratings.json
+node_modules/
